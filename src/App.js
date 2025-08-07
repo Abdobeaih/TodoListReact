@@ -1,5 +1,5 @@
 import "./App.css";
-import ToDoList from "./ComponentToDoList/TodoList";
+import TodoList from "./ComponentToDoList/TodoList"; // fixed file name case
 import { createTheme, ThemeProvider } from "@mui/material/styles";
 import TodosProvider from "./Context/ToDosContext";
 import { ToastProvider } from "./Context/ToastContext";
@@ -30,12 +30,12 @@ function App() {
                             background: "#657dadff",
                         }}
                     >
-                        <ToDoList />
+                        <TodoList /> {/* fixed component name case */}
                     </div>
                 </ToastProvider>
             </TodosProvider>
         </ThemeProvider>
     );
 }
-//sdfasgh
+
 export default App;
