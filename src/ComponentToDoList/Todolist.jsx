@@ -6,17 +6,14 @@ import TextField from "@mui/material/TextField";
 import CardContent from "@mui/material/CardContent";
 import Button from "@mui/material/Button";
 import Typography from "@mui/material/Typography";
-// Modal Delete
 import Dialog from "@mui/material/Dialog";
 import DialogActions from "@mui/material/DialogActions";
 import DialogContent from "@mui/material/DialogContent";
 import DialogContentText from "@mui/material/DialogContentText";
 import DialogTitle from "@mui/material/DialogTitle";
-
 import ToggleButton from "@mui/material/ToggleButton";
 import ToggleButtonGroup from "@mui/material/ToggleButtonGroup";
 
-// Component
 import { useToast } from "../Context/ToastContext";
 import { useState, useEffect, useMemo } from "react";
 import ToDo from "./ToDo";
@@ -25,8 +22,7 @@ import { useTodos, useTodosDispatch } from "../Context/ToDosContext";
 export default function TodoList() {
     const Todos = useTodos();
     const dispatch = useTodosDispatch();
-
-    const {  ShowHiddenOpenToast } = useToast();
+    const { ShowHiddenOpenToast } = useToast();
 
     const [InputTitle, setInputTitle] = useState("");
     const [displayedTodosType, setDisplayedTodosType] = useState("all");
@@ -34,18 +30,12 @@ export default function TodoList() {
     const [dialogTodo, setDialogTodo] = useState();
     const [ShowUpdateDialog, setShowUpdateDialog] = useState();
 
-    // filtration Array
-
     const CompletedTodos = useMemo(() => {
-        return Todos.filter((D) => {
-            return D.Incomplete;
-        });
+        return Todos.filter((D) => D.Incomplete);
     }, [Todos]);
 
     const NotCompletedTodos = useMemo(() => {
-        return Todos.filter((D) => {
-            return !D.Incomplete;
-        });
+        return Todos.filter((D) => !D.Incomplete);
     }, [Todos]);
 
     let TodosToBeRender = Todos;
@@ -53,8 +43,6 @@ export default function TodoList() {
         TodosToBeRender = CompletedTodos;
     } else if (displayedTodosType === "Non-Completed") {
         TodosToBeRender = NotCompletedTodos;
-    } else {
-        TodosToBeRender = Todos;
     }
 
     const ToDoList = TodosToBeRender.map((D) => {
@@ -72,11 +60,10 @@ export default function TodoList() {
         dispatch({ type: "get" });
     }, [dispatch]);
 
-    // Handlers
-
     function ChangeDisplayType(e) {
         setDisplayedTodosType(e.target.value);
     }
+
     function handelAdd() {
         dispatch({ type: "added", payload: { newTitle: InputTitle } });
         setInputTitle("");
@@ -87,10 +74,12 @@ export default function TodoList() {
         setDialogTodo(todo);
         setShowDelete(true);
     }
+
     function showUpdateDialog(todo) {
         setDialogTodo(todo);
         setShowUpdateDialog(true);
     }
+
     function handelDeleteDialogClose() {
         setShowDelete(false);
     }
@@ -100,6 +89,7 @@ export default function TodoList() {
         setShowDelete(false);
         ShowHiddenOpenToast("Done Deleted Mission");
     }
+
     function handelUpdateClose() {
         setShowUpdateDialog(false);
     }
@@ -109,35 +99,28 @@ export default function TodoList() {
         setShowUpdateDialog(false);
         ShowHiddenOpenToast("Done Updated Mission");
     }
+
     return (
         <>
-            {/* Delete To Do */}
             <Dialog
                 onClose={handelDeleteDialogClose}
                 open={ShowDelete}
-                keepMounted
-                aria-describedby="alert-dialog-slide-description"
             >
-                <DialogTitle>{"You Sure Deleted"}</DialogTitle>
+                <DialogTitle>{"Are You Sure?"}</DialogTitle>
                 <DialogContent>
-                    <DialogContentText id="alert-dialog-slide-description">
+                    <DialogContentText>
                         You Can Not Undo The Deletion
                     </DialogContentText>
                 </DialogContent>
                 <DialogActions>
                     <Button onClick={handelDeleteDialogClose}>Close</Button>
-                    <Button onClick={handelDeleteConfirm}>
-                        Agree To Deletion
-                    </Button>
+                    <Button onClick={handelDeleteConfirm}>Agree To Deletion</Button>
                 </DialogActions>
             </Dialog>
-            {/* End Model Delete */}
-            {/* Update Dialog */}
+
             <Dialog
                 onClose={handelUpdateClose}
                 open={ShowUpdateDialog}
-                keepMounted
-                aria-describedby="alert-dialog-slide-description"
             >
                 <DialogTitle>{"Update Mission"}</DialogTitle>
                 <DialogContent>
@@ -151,10 +134,7 @@ export default function TodoList() {
                         variant="standard"
                         value={dialogTodo?.title}
                         onChange={(e) => {
-                            setDialogTodo({
-                                ...dialogTodo,
-                                title: e.target.value,
-                            });
+                            setDialogTodo({ ...dialogTodo, title: e.target.value });
                         }}
                     />
                     <TextField
@@ -165,10 +145,7 @@ export default function TodoList() {
                         variant="standard"
                         value={dialogTodo?.details}
                         onChange={(e) => {
-                            setDialogTodo({
-                                ...dialogTodo,
-                                details: e.target.value,
-                            });
+                            setDialogTodo({ ...dialogTodo, details: e.target.value });
                         }}
                     />
                 </DialogContent>
@@ -177,69 +154,52 @@ export default function TodoList() {
                     <Button onClick={handelUpdateConfirm}>Agree</Button>
                 </DialogActions>
             </Dialog>
-            {/* END Update Dialog */}
-            <Container maxWidth="sm">
-                <Card
-                    sx={{ minWidth: 275 }}
-                    style={{ maxHeight: "80vh", overflow: "scroll" }}
-                >
-                    <CardContent>
-                        <Typography variant="h2">
-                            To Do List
-                            <Divider />
-                        </Typography>
 
-                        {/* ToggleGroup Button Filter */}
+            <Container maxWidth="sm">
+                <Card sx={{ minWidth: 275 }}>
+                    <CardContent>
+                        <Typography variant="h3" sx={{ fontWeight: 700 }}>
+                            Todo List
+                        </Typography>
+                        <Divider sx={{ my: 1 }} />
+
                         <ToggleButtonGroup
-                            style={{ margin: "10px" }}
+                            sx={{ my: 2 }}
                             exclusive
+                            fullWidth
                             value={displayedTodosType}
                             onChange={ChangeDisplayType}
-                            aria-label="text alignment"
                             color="primary"
                         >
                             <ToggleButton value="all">All</ToggleButton>
-                            <ToggleButton value="Completed">
-                                Completed
-                            </ToggleButton>
-                            <ToggleButton value="Non-Completed">
-                                Not Completed
-                            </ToggleButton>
+                            <ToggleButton value="Completed">Completed</ToggleButton>
+                            <ToggleButton value="Non-Completed">Not Completed</ToggleButton>
                         </ToggleButtonGroup>
-                        {/* ToggleGroup Button Filter End */}
 
-                        {/* All ToDo */}
                         {ToDoList}
-                        {/* All ToDo End */}
 
-                        {/* Input And Add Button */}
-                        <Grid container spacing={2} style={{ margin: "9px" }}>
-                            <Grid item xs={8}>
+                        <Grid container spacing={2} sx={{ mt: 2 }}>
+                            <Grid size={8}>
                                 <TextField
-                                    style={{ width: "100%" }}
-                                    id="outlined-basic"
-                                    label="Address Mission"
+                                    fullWidth
+                                    label="New Mission"
                                     variant="outlined"
                                     value={InputTitle}
-                                    onChange={(e) =>
-                                        setInputTitle(e.target.value)
-                                    }
+                                    onChange={(e) => setInputTitle(e.target.value)}
                                 />
                             </Grid>
-                            <Grid item xs={4}>
+                            <Grid size={4}>
                                 <Button
-                                    style={{ width: "100%", height: "100%" }}
+                                    fullWidth
                                     variant="contained"
-                                    onClick={() => {
-                                        handelAdd();
-                                    }}
+                                    sx={{ height: "100%" }}
+                                    onClick={handelAdd}
                                     disabled={InputTitle.length <= 0}
                                 >
-                                    Add Mission
+                                    Add
                                 </Button>
                             </Grid>
                         </Grid>
-                        {/* Input And Add Button End */}
                     </CardContent>
                 </Card>
             </Container>
