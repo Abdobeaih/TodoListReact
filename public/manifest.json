@@ -1,10 +1,11 @@
 {
-  "short_name": "React App",
-  "name": "Create React App Sample",
+  "short_name": "TaskFlow",
+  "name": "TaskFlow - Task Management",
+  "description": "Plan, prioritise and finish what matters.",
   "icons": [
     {
       "src": "favicon.ico",
-      "sizes": "64x64 32x32 24x24 16x16",
+      "sizes": "64x64 32x64 24x24 16x16",
       "type": "image/x-icon"
     },
     {
@@ -19,7 +20,9 @@
     }
   ],
   "start_url": ".",
+  "scope": ".",
   "display": "standalone",
-  "theme_color": "#000000",
-  "background_color": "#ffffff"
+  "orientation": "portrait-primary",
+  "theme_color": "#5B54E8",
+  "background_color": "#F6F6FB"
 }
