@@ -1,7 +1,7 @@
-import { useState, type ReactNode } from "react";
+import { useState, type MouseEvent, type ReactNode } from "react";
 import Box from "@mui/material/Box";
-import Card from "@mui/material/Card";
-import Chip from "@mui/material/Chip";
+import ButtonBase from "@mui/material/ButtonBase";
+import Divider from "@mui/material/Divider";
 import IconButton from "@mui/material/IconButton";
 import ListItemIcon from "@mui/material/ListItemIcon";
 import ListItemText from "@mui/material/ListItemText";
@@ -11,18 +11,11 @@ import Stack from "@mui/material/Stack";
 import Tooltip from "@mui/material/Tooltip";
 import Typography from "@mui/material/Typography";
 import CheckRoundedIcon from "@mui/icons-material/CheckRounded";
-import CheckCircleRoundedIcon from "@mui/icons-material/CheckCircleRounded";
 import DeleteOutlineRoundedIcon from "@mui/icons-material/DeleteOutlineRounded";
 import EditRoundedIcon from "@mui/icons-material/EditRounded";
-import EventRoundedIcon from "@mui/icons-material/EventRounded";
-import FolderRoundedIcon from "@mui/icons-material/FolderRounded";
+import FlagOutlinedIcon from "@mui/icons-material/FlagOutlined";
 import MoreHorizRoundedIcon from "@mui/icons-material/MoreHorizRounded";
-import RadioButtonUncheckedRoundedIcon from "@mui/icons-material/RadioButtonUncheckedRounded";
-import SellRoundedIcon from "@mui/icons-material/SellRounded";
-import TimelapseRoundedIcon from "@mui/icons-material/TimelapseRounded";
-import TuneRoundedIcon from "@mui/icons-material/TuneRounded";
 import { describeDueDate, formatFullDate } from "../lib/date";
-import { isOverdue, nextStatus } from "../lib/tasks";
 import {
     DEFAULT_PROJECT,
     PRIORITY_META,
@@ -34,21 +27,16 @@ import {
     type TaskStatus,
 } from "../types/task";
 
-const STATUS_ICONS: Record<TaskStatus, ReactNode> = {
-    todo: <RadioButtonUncheckedRoundedIcon />,
-    doing: <TimelapseRoundedIcon />,
-    done: <CheckCircleRoundedIcon />,
-};
-
-const STATUS_COLORS: Record<TaskStatus, "default" | "info" | "success"> = {
-    todo: "default",
-    doing: "info",
-    done: "success",
+const PRIORITY_COLORS: Record<TaskPriority, string> = {
+    low: "text.disabled",
+    medium: "text.secondary",
+    high: "warning.main",
+    urgent: "error.main",
 };
 
 interface TaskItemProps {
     task: Task;
-    onCycleStatus: (task: Task) => void;
+    onToggleComplete: (task: Task) => void;
     onSetStatus: (task: Task, status: TaskStatus) => void;
     onSetPriority: (task: Task, priority: TaskPriority) => void;
     onEdit: (task: Task) => void;
@@ -59,7 +47,7 @@ interface TaskItemProps {
 
 export function TaskItem({
     task,
-    onCycleStatus,
+    onToggleComplete,
     onSetStatus,
     onSetPriority,
     onEdit,
@@ -67,58 +55,143 @@ export function TaskItem({
     onFilterByProject,
     onFilterByTag,
 }: TaskItemProps) {
-    const [menuAnchor, setMenuAnchor] = useState<HTMLElement | null>(null);
+    const [actionsAnchor, setActionsAnchor] = useState<HTMLElement | null>(null);
+    const [statusAnchor, setStatusAnchor] = useState<HTMLElement | null>(null);
     const [priorityAnchor, setPriorityAnchor] = useState<HTMLElement | null>(null);
 
     const isDone = task.status === "done";
-    const upcoming = nextStatus(task.status);
+    const isDoing = task.status === "doing";
     const due = describeDueDate(task.dueDate);
-    const overdue = isOverdue(task);
-    const dueColor =
-        due.tone === "overdue"
-            ? "error"
-            : due.tone === "today"
-              ? "warning"
-              : due.tone === "soon"
-                ? "info"
-                : "default";
-    const priorityMeta = PRIORITY_META[task.priority];
+    const priorityColor = PRIORITY_COLORS[task.priority];
+
+    // Colour is reserved for the two facts a user must act on: overdue, and due today.
+    // Completed work never nags, even when it was finished after the deadline.
+    const dueColor = isDone
+        ? null
+        : due.tone === "overdue"
+          ? "error.main"
+          : due.tone === "today"
+            ? "warning.main"
+            : null;
+
+    const meta: ReactNode[] = [];
+    const addMeta = (node: ReactNode) => {
+        if (node) meta.push(node);
+    };
+
+    addMeta(
+        <Tooltip key="priority" title="Change priority">
+            <Box
+                component="button"
+                type="button"
+                onClick={(event: MouseEvent<HTMLElement>) => setPriorityAnchor(event.currentTarget)}
+                aria-haspopup="menu"
+                aria-label={`Change priority of "${task.title}"`}
+                className="meta-item"
+                sx={{
+                    display: "inline-flex",
+                    alignItems: "center",
+                    gap: 0.4,
+                    color: priorityColor,
+                }}
+            >
+                <FlagOutlinedIcon sx={{ fontSize: 12 }} />
+                {PRIORITY_META[task.priority].label}
+            </Box>
+        </Tooltip>,
+    );
+
+    if (task.project !== DEFAULT_PROJECT) {
+        addMeta(
+            <Box
+                key="project"
+                component="button"
+                type="button"
+                className="meta-item"
+                onClick={() => onFilterByProject(task.project)}
+            >
+                {task.project}
+            </Box>,
+        );
+    }
+
+    for (const tag of task.tags) {
+        addMeta(
+            <Box
+                key={`tag-${tag}`}
+                component="button"
+                type="button"
+                className="meta-item"
+                onClick={() => onFilterByTag(tag)}
+            >
+                #{tag}
+            </Box>,
+        );
+    }
+
+    if (task.dueDate) {
+        addMeta(
+            <Tooltip key="due" title={formatFullDate(task.dueDate)}>
+                <Box
+                    component="span"
+                    className="meta-item"
+                    sx={{ color: dueColor, fontWeight: dueColor ? 600 : 400 }}
+                >
+                    {due.label}
+                </Box>
+            </Tooltip>,
+        );
+    }
+
+    if (isDoing) {
+        addMeta(
+            <Box
+                key="status"
+                component="button"
+                type="button"
+                className="meta-item"
+                aria-haspopup="menu"
+                onClick={(event: MouseEvent<HTMLElement>) => setStatusAnchor(event.currentTarget)}
+                sx={{ color: "info.main" }}
+            >
+                {STATUS_META.doing.short}
+            </Box>,
+        );
+    }
 
     return (
-        <Card
+        <Box
             component="li"
             sx={{
                 display: "flex",
                 alignItems: "flex-start",
-                gap: { xs: 0.5, sm: 1 },
-                p: { xs: 1, sm: 1.25 },
-                pl: { xs: 1, sm: 1.5 },
-                borderLeft: "3px solid",
-                borderLeftColor: overdue ? "error.main" : "transparent",
-                opacity: isDone ? 0.72 : 1,
-                transition: "border-color 150ms ease, box-shadow 150ms ease",
-                "&:hover": { boxShadow: "0 6px 18px rgba(16, 18, 40, 0.08)" },
+                gap: 1.25,
+                py: 1,
+                pl: 0.5,
+                pr: 0.5,
+                borderBottom: "1px solid var(--mui-palette-divider)",
+                transition: "background-color 120ms ease",
+                "&:hover": { backgroundColor: "action.hover" },
+                "&:last-of-type": { borderBottom: "none" },
+                // Reveal the row actions from the row, not from the actions themselves.
+                "&:hover .row-actions, &:focus-within .row-actions": { opacity: 1 },
             }}
         >
-            <Tooltip
-                title={`${STATUS_META[task.status].label} · click to mark ${STATUS_META[upcoming].label.toLowerCase()}`}
-            >
-                <IconButton
-                    aria-label={`Mark "${task.title}" as ${STATUS_META[upcoming].label}`}
-                    onClick={() => onCycleStatus(task)}
-                    color={STATUS_COLORS[task.status]}
-                    sx={{ mt: 0.25, flexShrink: 0 }}
-                >
-                    {STATUS_ICONS[task.status]}
-                </IconButton>
-            </Tooltip>
+            <CompleteToggle
+                task={task}
+                isDone={isDone}
+                isDoing={isDoing}
+                onToggle={onToggleComplete}
+            />
 
             <Box sx={{ flex: 1, minWidth: 0 }}>
                 <Typography
-                    variant="h5"
                     sx={{
-                        textDecoration: isDone ? "line-through" : "none",
+                        fontSize: "0.9375rem",
+                        fontWeight: 500,
+                        lineHeight: 1.45,
                         color: isDone ? "text.secondary" : "text.primary",
+                        textDecoration: isDone ? "line-through" : "none",
                         overflowWrap: "anywhere",
                     }}
                 >
@@ -130,10 +203,10 @@ export function TaskItem({
                         variant="body2"
                         color="text.secondary"
                         sx={{
-                            mt: 0.25,
+                            mt: 0.15,
                             overflowWrap: "anywhere",
                             display: "-webkit-box",
-                            WebkitLineClamp: 2,
+                            WebkitLineClamp: 1,
                             WebkitBoxOrient: "vertical",
                             overflow: "hidden",
                         }}
@@ -142,101 +215,104 @@ export function TaskItem({
                     </Typography>
                 )}
 
-                <Stack
-                    direction="row"
-                    spacing={0.75}
-                    useFlexGap
-                    flexWrap="wrap"
-                    sx={{ mt: task.notes ? 1 : 0.75 }}
-                >
-                    <Chip
-                        size="small"
-                        label={priorityMeta.label}
-                        color={priorityMeta.color}
-                        variant="outlined"
-                        icon={<SellRoundedIcon />}
-                    />
-
-                    {task.project !== DEFAULT_PROJECT && (
-                        <Chip
-                            size="small"
-                            label={task.project}
-                            variant="outlined"
-                            icon={<FolderRoundedIcon />}
-                            clickable
-                            onClick={() => onFilterByProject(task.project)}
-                        />
-                    )}
-
-                    {task.dueDate && (
-                        <Tooltip title={formatFullDate(task.dueDate)}>
-                            <Chip
-                                size="small"
-                                label={due.label}
-                                color={dueColor}
-                                variant={due.tone === "later" ? "outlined" : "filled"}
-                                icon={<EventRoundedIcon />}
-                            />
-                        </Tooltip>
-                    )}
-
-                    {task.tags.map((tag) => (
-                        <Chip
-                            key={tag}
-                            size="small"
-                            label={`#${tag}`}
-                            variant="outlined"
-                            clickable
-                            onClick={() => onFilterByTag(tag)}
-                        />
-                    ))}
-                </Stack>
+                {meta.length > 0 && (
+                    <Stack
+                        direction="row"
+                        spacing={0.75}
+                        useFlexGap
+                        flexWrap="wrap"
+                        alignItems="center"
+                        sx={{ mt: 0.4, fontSize: "0.75rem", color: "text.secondary" }}
+                    >
+                        {meta.map((node, index) => (
+                            <Box key={index} className="meta-sep" sx={{ display: "contents" }}>
+                                {index > 0 && (
+                                    <Box aria-hidden sx={{ color: "text.disabled" }}>
+                                        ·
+                                    </Box>
+                                )}
+                                {node}
+                            </Box>
+                        ))}
+                    </Stack>
+                )}
             </Box>
 
-            <Stack direction="row" spacing={0.25} sx={{ flexShrink: 0 }}>
-                <Tooltip title="Change priority">
-                    <IconButton
-                        aria-label={`Change priority of "${task.title}"`}
-                        aria-haspopup="menu"
-                        onClick={(event) => setPriorityAnchor(event.currentTarget)}
-                        size="small"
-                        sx={{
-                            display: { xs: "none", sm: "inline-flex" },
-                            color: task.priority === "low" ? "text.secondary" : priorityMeta.color,
-                        }}
-                    >
-                        <TuneRoundedIcon fontSize="small" />
-                    </IconButton>
-                </Tooltip>
-
+            <Box
+                className="row-actions"
+                sx={{
+                    flexShrink: 0,
+                    display: "flex",
+                    gap: 0.25,
+                    // Quiet by default on pointer devices; always visible where there is no hover.
+                    opacity: { xs: 1, sm: 0 },
+                    transition: "opacity 120ms ease",
+                    "@media (hover: none)": { opacity: 1 },
+                }}
+            >
                 <Tooltip title="Edit task">
                     <IconButton
                         aria-label={`Edit "${task.title}"`}
                         onClick={() => onEdit(task)}
                         size="small"
-                        sx={{ display: { xs: "none", sm: "inline-flex" } }}
                     >
                         <EditRoundedIcon fontSize="small" />
                     </IconButton>
                 </Tooltip>
-
                 <Tooltip title="More actions">
                     <IconButton
                         aria-label={`More actions for "${task.title}"`}
                         aria-haspopup="menu"
-                        onClick={(event) => setMenuAnchor(event.currentTarget)}
+                        onClick={(event) => setActionsAnchor(event.currentTarget)}
                         size="small"
                     >
                         <MoreHorizRoundedIcon fontSize="small" />
                     </IconButton>
                 </Tooltip>
-            </Stack>
+            </Box>
 
             <Menu
-                anchorEl={menuAnchor}
-                open={Boolean(menuAnchor)}
-                onClose={() => setMenuAnchor(null)}
-                onClick={() => setMenuAnchor(null)}
+                anchorEl={actionsAnchor}
+                open={Boolean(actionsAnchor)}
+                onClose={() => setActionsAnchor(null)}
+                onClick={() => setActionsAnchor(null)}
+            >
+                <MenuItem onClick={() => onEdit(task)}>
+                    <ListItemIcon>
+                        <EditRoundedIcon fontSize="small" />
+                    </ListItemIcon>
+                    <ListItemText>Edit</ListItemText>
+                </MenuItem>
+                <MenuItem
+                    onClick={(event) => setStatusAnchor(event.currentTarget)}
+                    sx={{ display: { xs: "none", sm: "flex" } }}
+                >
+                    <ListItemIcon>
+                        <Box
+                            aria-hidden
+                            sx={{
+                                width: 14,
+                                height: 14,
+                                borderRadius: "50%",
+                                border: "1.5px solid currentColor",
+                            }}
+                        />
+                    </ListItemIcon>
+                    <ListItemText>Change status</ListItemText>
+                </MenuItem>
+                <Divider />
+                <MenuItem onClick={() => onDelete(task)} sx={{ color: "error.main" }}>
+                    <ListItemIcon>
+                        <DeleteOutlineRoundedIcon fontSize="small" color="error" />
+                    </ListItemIcon>
+                    <ListItemText>Delete</ListItemText>
+                </MenuItem>
+            </Menu>
+
+            <Menu
+                anchorEl={statusAnchor}
+                open={Boolean(statusAnchor)}
+                onClose={() => setStatusAnchor(null)}
             >
                 {STATUS_OPTIONS.map((option) => (
                     <MenuItem
@@ -251,28 +327,15 @@ export function TaskItem({
                                 <Box sx={{ width: 20 }} />
                             )}
                         </ListItemIcon>
-                        <ListItemText>{`Mark as ${option.label.toLowerCase()}`}</ListItemText>
+                        <ListItemText>{option.label}</ListItemText>
                     </MenuItem>
                 ))}
-                <MenuItem onClick={() => onEdit(task)} sx={{ display: { xs: "flex", sm: "none" } }}>
-                    <ListItemIcon>
-                        <EditRoundedIcon fontSize="small" />
-                    </ListItemIcon>
-                    <ListItemText>Edit</ListItemText>
-                </MenuItem>
-                <MenuItem onClick={() => onDelete(task)} sx={{ color: "error.main" }}>
-                    <ListItemIcon>
-                        <DeleteOutlineRoundedIcon fontSize="small" color="error" />
-                    </ListItemIcon>
-                    <ListItemText>Delete</ListItemText>
-                </MenuItem>
             </Menu>
 
             <Menu
                 anchorEl={priorityAnchor}
                 open={Boolean(priorityAnchor)}
                 onClose={() => setPriorityAnchor(null)}
-                onClick={() => setPriorityAnchor(null)}
             >
                 {PRIORITY_OPTIONS.map((option) => (
                     <MenuItem
@@ -291,6 +354,62 @@ export function TaskItem({
                     </MenuItem>
                 ))}
             </Menu>
-        </Card>
+        </Box>
+    );
+}
+
+interface CompleteToggleProps {
+    task: Task;
+    isDone: boolean;
+    isDoing: boolean;
+    onToggle: (task: Task) => void;
+}
+
+/**
+ * A round two-state control rather than a three-way status cycle: completing a task is the
+ * one action people perform hundreds of times, and it should never be a mis-click.
+ */
+function CompleteToggle({ task, isDone, isDoing, onToggle }: CompleteToggleProps) {
+    const label = isDone
+        ? `Mark "${task.title}" as not completed`
+        : `Mark "${task.title}" as completed`;
+
+    return (
+        <ButtonBase
+            role="checkbox"
+            aria-checked={isDone}
+            aria-label={label}
+            onClick={() => onToggle(task)}
+            disableRipple
+            sx={{
+                mt: "3px",
+                width: 20,
+                height: 20,
+                flexShrink: 0,
+                borderRadius: "50%",
+                border: "1.5px solid",
+                borderColor: isDone ? "success.main" : isDoing ? "info.main" : "divider",
+                backgroundColor: isDone ? "success.main" : "transparent",
+                transition: "border-color 120ms ease, background-color 120ms ease",
+                "&:hover": {
+                    borderColor: isDone ? "success.dark" : "text.secondary",
+                    backgroundColor: isDone ? "success.dark" : "action.hover",
+                },
+                "&:focus-visible": {
+                    outline: "2px solid",
+                    outlineColor: "primary.main",
+                    outlineOffset: 2,
+                },
+            }}
+        >
+            {isDone ? (
+                <CheckRoundedIcon sx={{ fontSize: 14, color: "#fff" }} />
+            ) : isDoing ? (
+                <Box
+                    aria-hidden
+                    sx={{ width: 8, height: 8, borderRadius: "50%", backgroundColor: "info.main" }}
+                />
+            ) : null}
+        </ButtonBase>
     );
 }

@@ -1,7 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import Box from "@mui/material/Box";
 import Stack from "@mui/material/Stack";
-import Typography from "@mui/material/Typography";
 import { useTaskStore, type PendingUndo } from "../store/taskStoreContext";
 import { useNow } from "../hooks/useNow";
 import {
@@ -9,21 +7,18 @@ import {
     collectTags,
     computeStats,
     filterTasks,
-    nextStatus,
+    groupTasksByDue,
+    groupsByDue,
     sortTasks,
 } from "../lib/tasks";
 import { DEFAULT_FILTERS, countActiveFilters, type TaskFilters } from "../types/filters";
 import type { Task, TaskDraft, TaskPriority, TaskStatus } from "../types/task";
 import { useFeedback } from "./feedbackContext";
 import { ConfirmDialog } from "./ConfirmDialog";
-import { StatsBar } from "./StatsBar";
+import { ProgressSummary } from "./ProgressSummary";
 import { TaskFormDialog, type TaskFormTarget } from "./TaskFormDialog";
 import { TaskList } from "./TaskList";
 import { TaskToolbar } from "./TaskToolbar";
-
-function toggleValue(list: string[], value: string): string[] {
-    return list.includes(value) ? list.filter((item) => item !== value) : [...list, value];
-}
 
 function isTypingTarget(target: EventTarget | null): boolean {
     const element = target as HTMLElement | null;
@@ -65,6 +60,12 @@ export function TaskDashboard() {
         [tasks, filters, now],
     );
 
+    const grouped = groupsByDue(filters.sort);
+    const groups = useMemo(
+        () => (grouped ? groupTasksByDue(visibleTasks, now) : []),
+        [grouped, visibleTasks, now],
+    );
+
     const openCreateDialog = useCallback(() => setFormTarget({ mode: "create" }), []);
 
     const handleSubmit = useCallback(
@@ -81,8 +82,9 @@ export function TaskDashboard() {
         [addTask, updateTask, notify],
     );
 
-    const handleCycleStatus = useCallback(
-        (task: Task) => updateTask(task.id, { status: nextStatus(task.status) }),
+    // The leading circle is a two-state control: finishing is one click, unfinishing is one click.
+    const handleToggleComplete = useCallback(
+        (task: Task) => updateTask(task.id, { status: task.status === "done" ? "todo" : "done" }),
         [updateTask],
     );
 
@@ -142,7 +144,8 @@ export function TaskDashboard() {
         });
     }, [pendingUndo, notify, undoLastRemoval]);
 
-    // Power-user shortcuts: N for a new task, / to jump to search.
+    // Power-user shortcuts: N for a new task, / to jump to search. Advertised in the
+    // "New task" tooltip rather than a permanent footer legend.
     useEffect(() => {
         function onKeyDown(event: KeyboardEvent) {
             if (isTypingTarget(event.target) || event.metaKey || event.ctrlKey || event.altKey)
@@ -164,18 +167,11 @@ export function TaskDashboard() {
 
     return (
         <>
-            <Stack spacing={2.5}>
-                <StatsBar
+            <Stack spacing={0}>
+                <ProgressSummary
                     stats={stats}
-                    activeStatuses={filters.statuses}
                     overdueActive={filters.due === "overdue"}
                     dueTodayActive={filters.due === "today"}
-                    onToggleStatus={(status) =>
-                        setFilters((current) => ({
-                            ...current,
-                            statuses: toggleValue(current.statuses, status),
-                        }))
-                    }
                     onToggleOverdue={handleToggleOverdue}
                     onToggleDueToday={handleToggleDueToday}
                 />
@@ -191,9 +187,11 @@ export function TaskDashboard() {
 
                 <TaskList
                     tasks={visibleTasks}
+                    groups={groups}
+                    grouped={grouped}
                     totalCount={tasks.length}
                     filtersActive={filtersActive}
-                    onCycleStatus={handleCycleStatus}
+                    onToggleComplete={handleToggleComplete}
                     onSetStatus={handleSetStatus}
                     onSetPriority={handleSetPriority}
                     onEdit={(task) => setFormTarget({ mode: "edit", task })}
@@ -206,22 +204,6 @@ export function TaskDashboard() {
                     onCreateFirst={openCreateDialog}
                     onClearCompleted={clearCompleted}
                 />
-
-                {tasks.length > 0 && (
-                    <Box sx={{ textAlign: "center" }}>
-                        <Typography variant="caption" color="text.secondary">
-                            Shortcuts: press{" "}
-                            <Typography component="kbd" variant="caption" sx={kbdStyles}>
-                                N
-                            </Typography>{" "}
-                            for a new task,{" "}
-                            <Typography component="kbd" variant="caption" sx={kbdStyles}>
-                                /
-                            </Typography>{" "}
-                            to search
-                        </Typography>
-                    </Box>
-                )}
             </Stack>
 
             <TaskFormDialog
@@ -249,13 +231,3 @@ export function TaskDashboard() {
         </>
     );
 }
-
-const kbdStyles = {
-    px: 0.75,
-    py: 0.25,
-    borderRadius: 1,
-    border: "1px solid var(--mui-palette-divider)",
-    fontFamily: "monospace",
-    fontSize: "0.6875rem",
-    lineHeight: 1.6,
-} as const;

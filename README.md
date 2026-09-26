@@ -32,8 +32,14 @@ Run `npm run verify` before pushing; it is the same gate CI should use.
 
 - **Tasks** with title, notes, status (to do / in progress / done), priority
   (low to urgent), due date, project and tags.
-- **Progress overview** with a completion bar plus clickable counts for to do, in
-  progress, overdue and due today. Clicking a count filters the list.
+- **Grouped by due date** into Overdue, Today, Tomorrow, This week, Later, No date and
+  Completed, with sticky section headers. Picking a non-due sort falls back to a single
+  flat list rather than pretending to be grouped.
+- **A flat, dense list.** One row per task with hairline separators, a two-state
+  completion circle, and secondary metadata in a single quiet line instead of a row of
+  chips. Row actions stay out of the way until you hover or tab into them.
+- **Progress summary**: a hairline bar plus clickable overdue and due-today counts.
+  Clicking a count filters the list.
 - **Search** across title, notes, project and tags.
 - **Filters** for status, priority, due date, project and tags, combined with AND
   across facets and OR within a facet.
@@ -42,7 +48,23 @@ Run `npm run verify` before pushing; it is the same gate CI should use.
 - **Light and dark themes**, following the system preference until you override it.
 - **Keyboard shortcuts**: `N` for a new task, `/` to focus search, `Enter` to submit
   a single-line field.
-- **Responsive** down to small phones; secondary actions collapse into a menu.
+- **Starts empty.** No seeded sample tasks, so your list is yours from the first run.
+- **Responsive** down to small phones; row actions remain reachable without hover.
+
+## Design language
+
+The interface is deliberately quiet, and the rules are worth keeping if you extend it:
+
+- **One accent colour.** Indigo, used for the logo, focus rings and the primary action.
+  Nothing else competes with it.
+- **No gradients, no decorative shadows.** Elevation is reserved for real overlays
+  (dialogs, menus). Cards and rows are flat surfaces separated by hairlines.
+- **Colour is information.** Red and amber are only ever applied to a task that is
+  overdue or due today, and to high and urgent priority. Everything else is grey.
+  Completed work never nags, even when it was finished after its deadline.
+- **Typography does the hierarchy.** The task title is the largest text in the row;
+  metadata is small and secondary. Headings use the self-hosted Poppins, while UI and
+  body copy use the platform sans, which is denser and more legible at these sizes.
 
 ## Architecture
 
@@ -74,8 +96,12 @@ A few decisions worth knowing about:
   provider.
 - **Dates are local.** Due dates are stored as `YYYY-MM-DD` and parsed to local
   midnight, so a task never shifts a day because of the viewer's time zone.
-- **Fonts are self-hosted** from `public/Font`, so typography does not depend on a
-  third-party request.
+- **Grouping is a sort, not a permanent layout.** `groupTasksByDue` only runs for the
+  `due-asc` order; every other sort renders a flat list so the visible order always
+  matches the sort the user picked.
+- **Fonts are self-hosted** from `public/Font`, so headings do not depend on a
+  third-party request. Body copy deliberately uses the platform stack rather than
+  shipping a second webfont for text that mostly sits at 12–15px.
 
 ## Data model
 
@@ -100,9 +126,9 @@ Tasks persist under the `taskflow.tasks` key; the colour scheme under
 
 ## Testing
 
-106 tests across 6 files: pure unit tests for dates, filtering, sorting, stats,
-storage and the reducer, plus integration tests that drive the real UI through
-create, edit, status cycling, search, filtering, delete and undo.
+113 tests across 6 files: pure unit tests for dates, filtering, sorting, due-date
+grouping, stats, storage and the reducer, plus integration tests that drive the real UI
+through create, edit, completing, search, filtering, delete and undo.
 
 ```bash
 npm run test:coverage

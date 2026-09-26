@@ -4,10 +4,12 @@ import {
     collectTags,
     computeStats,
     createTask,
+    dueGroupFor,
     filterTasks,
+    groupTasksByDue,
+    groupsByDue,
     isDueToday,
     isOverdue,
-    nextStatus,
     normalizeTags,
     sortTasks,
 } from "./tasks";
@@ -59,14 +61,6 @@ const TASKS = [
         project: "Inbox",
     }),
 ];
-
-describe("nextStatus", () => {
-    it("cycles todo to doing to done and back", () => {
-        expect(nextStatus("todo")).toBe("doing");
-        expect(nextStatus("doing")).toBe("done");
-        expect(nextStatus("done")).toBe("todo");
-    });
-});
 
 describe("isOverdue", () => {
     it("flags open tasks whose date has passed", () => {
@@ -288,5 +282,70 @@ describe("createTask", () => {
     it("stamps completedAt when created as done", () => {
         const task = createTask(makeDraft({ status: "done" }), "id", "2026-09-26T10:00:00.000Z");
         expect(task.completedAt).toBe("2026-09-26T10:00:00.000Z");
+    });
+});
+
+describe("due-date grouping", () => {
+    const at = (days: number) => {
+        const date = new Date(NOW);
+        date.setDate(date.getDate() + days);
+        return `${date.getFullYear()}-${`${date.getMonth() + 1}`.padStart(2, "0")}-${`${date.getDate()}`.padStart(2, "0")}`;
+    };
+
+    it("buckets a task by how far away its deadline is", () => {
+        expect(dueGroupFor(makeTask({ dueDate: at(-1) }), NOW)).toBe("overdue");
+        expect(dueGroupFor(makeTask({ dueDate: at(0) }), NOW)).toBe("today");
+        expect(dueGroupFor(makeTask({ dueDate: at(1) }), NOW)).toBe("tomorrow");
+        expect(dueGroupFor(makeTask({ dueDate: at(3) }), NOW)).toBe("week");
+        expect(dueGroupFor(makeTask({ dueDate: at(30) }), NOW)).toBe("later");
+        expect(dueGroupFor(makeTask({ dueDate: null }), NOW)).toBe("someday");
+    });
+
+    it("sinks finished work into completed even when it is late", () => {
+        const late = makeTask({ status: "done", dueDate: at(-5) });
+        expect(dueGroupFor(late, NOW)).toBe("completed");
+    });
+
+    it("returns sections in urgency order and drops empty ones", () => {
+        const groups = groupTasksByDue(
+            [
+                makeTask({ id: "later", dueDate: at(30) }),
+                makeTask({ id: "done", status: "done", dueDate: at(-2) }),
+                makeTask({ id: "today", dueDate: at(0) }),
+                makeTask({ id: "nodate", dueDate: null }),
+                makeTask({ id: "overdue", dueDate: at(-3) }),
+            ],
+            NOW,
+        );
+
+        expect(groups.map((group) => group.id)).toEqual([
+            "overdue",
+            "today",
+            "later",
+            "someday",
+            "completed",
+        ]);
+        expect(groups[0].tasks.map((task) => task.id)).toEqual(["overdue"]);
+    });
+
+    it("preserves the incoming order inside a section", () => {
+        const groups = groupTasksByDue(
+            [
+                makeTask({ id: "t1", dueDate: at(0) }),
+                makeTask({ id: "t2", dueDate: at(0) }),
+                makeTask({ id: "t3", dueDate: at(0) }),
+            ],
+            NOW,
+        );
+
+        expect(groups[0].tasks.map((task) => task.id)).toEqual(["t1", "t2", "t3"]);
+    });
+
+    it("groups only for the due-date order, and reports the section labels", () => {
+        expect(groupsByDue("due-asc")).toBe(true);
+        expect(groupsByDue("due-desc")).toBe(false);
+        expect(groupsByDue("priority-desc")).toBe(false);
+        expect(groupsByDue("title-asc")).toBe(false);
+        expect(groupTasksByDue([makeTask({ dueDate: at(0) })], NOW)[0].label).toBe("Today");
     });
 });

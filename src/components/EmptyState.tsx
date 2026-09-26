@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
 import Box from "@mui/material/Box";
+import Stack from "@mui/material/Stack";
 import Typography from "@mui/material/Typography";
 
 interface EmptyStateProps {
@@ -9,38 +10,32 @@ interface EmptyStateProps {
     action?: ReactNode;
 }
 
+/**
+ * Left-aligned and compact. A first-run screen is a sentence, not a poster, so the icon
+ * sits inline with the copy instead of floating above it in a decorative box.
+ */
 export function EmptyState({ icon, title, description, action }: EmptyStateProps) {
     return (
-        <Box
+        <Stack
+            direction="row"
+            alignItems="flex-start"
+            spacing={1.5}
             sx={{
-                display: "flex",
-                flexDirection: "column",
-                alignItems: "center",
-                textAlign: "center",
-                gap: 1.5,
-                px: 3,
-                py: { xs: 5, sm: 7 },
+                px: 1,
+                py: { xs: 3, sm: 4 },
+                maxWidth: 480,
             }}
         >
-            <Box
-                aria-hidden
-                sx={{
-                    display: "grid",
-                    placeItems: "center",
-                    width: 60,
-                    height: 60,
-                    borderRadius: 3,
-                    color: "primary.main",
-                    backgroundColor: "action.selected",
-                }}
-            >
+            <Box aria-hidden sx={{ color: "text.disabled", display: "flex", mt: 0.3 }}>
                 {icon}
             </Box>
-            <Typography variant="h4">{title}</Typography>
-            <Typography variant="body2" color="text.secondary" sx={{ maxWidth: 420 }}>
-                {description}
-            </Typography>
-            {action}
-        </Box>
+            <Box sx={{ minWidth: 0 }}>
+                <Typography variant="subtitle1">{title}</Typography>
+                <Typography variant="body2" color="text.secondary" sx={{ mt: 0.25 }}>
+                    {description}
+                </Typography>
+                {action && <Box sx={{ mt: 1.5 }}>{action}</Box>}
+            </Box>
+        </Stack>
     );
 }

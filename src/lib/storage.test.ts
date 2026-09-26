@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { createSampleTasks, loadTasks, normalizeTask, saveTasks } from "./storage";
+import { loadTasks, normalizeTask, saveTasks } from "./storage";
 import { makeTask } from "../test/factories";
 import type { Task } from "../types/task";
 
@@ -136,22 +136,8 @@ describe("legacy migration", () => {
         window.localStorage.setItem("todos", JSON.stringify({ not: "an array" }));
         expect(loadTasks()).toBeNull();
     });
-});
 
-describe("createSampleTasks", () => {
-    it("seeds a mix of statuses with unique ids", () => {
-        const samples = createSampleTasks(new Date(2026, 8, 26));
-
-        expect(samples.length).toBeGreaterThan(0);
-        expect(new Set(samples.map((task) => task.id)).size).toBe(samples.length);
-        expect(samples.some((task) => task.status === "done")).toBe(true);
-        expect(samples.some((task) => task.status === "doing")).toBe(true);
-    });
-
-    it("only stamps completedAt on finished tasks", () => {
-        const samples = createSampleTasks(new Date(2026, 8, 26));
-        for (const task of samples) {
-            expect(Boolean(task.completedAt)).toBe(task.status === "done");
-        }
+    it("returns null on a first run so the app can start empty", () => {
+        expect(loadTasks()).toBeNull();
     });
 });

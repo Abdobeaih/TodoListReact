@@ -20,6 +20,30 @@ body {
     isolation: isolate;
 }
 
+/* Secondary metadata on a task row. Kept clickable without pretending to be a chip. */
+.meta-item {
+    font: inherit;
+    color: inherit;
+    background: none;
+    border: 0;
+    padding: 0;
+    cursor: pointer;
+    text-align: left;
+    transition: color 120ms ease;
+}
+
+/* Underline on hover only: recolouring would wash out the semantic red/amber
+   that tells the user a task is overdue or due today. */
+.meta-item:hover {
+    text-decoration: underline;
+}
+
+.meta-item:focus-visible {
+    outline: 2px solid var(--mui-palette-primary-main);
+    outline-offset: 2px;
+    border-radius: 2px;
+}
+
 @media (prefers-reduced-motion: reduce) {
     *,
     *::before,

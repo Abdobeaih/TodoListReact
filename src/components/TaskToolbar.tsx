@@ -1,7 +1,6 @@
 import type { RefObject } from "react";
 import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";
-import Card from "@mui/material/Card";
 import Collapse from "@mui/material/Collapse";
 import FormControl from "@mui/material/FormControl";
 import IconButton from "@mui/material/IconButton";
@@ -15,7 +14,6 @@ import AddRoundedIcon from "@mui/icons-material/AddRounded";
 import CloseRoundedIcon from "@mui/icons-material/CloseRounded";
 import FilterAltRoundedIcon from "@mui/icons-material/FilterAltRounded";
 import SearchRoundedIcon from "@mui/icons-material/SearchRounded";
-import SortRoundedIcon from "@mui/icons-material/SortRounded";
 import {
     SORT_LABELS,
     countActiveFilters,
@@ -42,19 +40,20 @@ export function TaskToolbar({
     searchRef,
 }: TaskToolbarProps) {
     const activeCount = countActiveFilters(filters);
+    const filtersActive = filtersOpen || activeCount > 0;
 
     return (
-        <Card sx={{ p: { xs: 1.5, sm: 2 } }}>
+        <Box sx={{ mb: 2 }}>
             <Stack
-                direction={{ xs: "column", md: "row" }}
-                spacing={1.5}
-                alignItems={{ md: "center" }}
+                direction={{ xs: "column", sm: "row" }}
+                spacing={1}
+                alignItems={{ sm: "center" }}
             >
                 <TextField
                     inputRef={searchRef}
                     value={filters.query}
                     onChange={(event) => onChange({ ...filters, query: event.target.value })}
-                    placeholder="Search title, notes, project or tag"
+                    placeholder="Search tasks"
                     size="small"
                     fullWidth
                     slotProps={{
@@ -83,19 +82,13 @@ export function TaskToolbar({
                 />
 
                 <Stack direction="row" spacing={1} useFlexGap flexWrap="wrap">
-                    <FormControl size="small" sx={{ minWidth: 200 }}>
+                    <FormControl size="small" sx={{ minWidth: 168 }}>
                         <Select
                             value={filters.sort}
                             onChange={(event) =>
                                 onChange({ ...filters, sort: event.target.value as SortOption })
                             }
                             displayEmpty
-                            startAdornment={
-                                <SortRoundedIcon
-                                    fontSize="small"
-                                    sx={{ mr: 1, color: "text.secondary" }}
-                                />
-                            }
                             inputProps={{ "aria-label": "Sort tasks" }}
                         >
                             {(Object.keys(SORT_LABELS) as SortOption[]).map((option) => (
@@ -107,8 +100,8 @@ export function TaskToolbar({
                     </FormControl>
 
                     <Button
-                        variant={filtersOpen || activeCount > 0 ? "contained" : "outlined"}
-                        color={filtersOpen || activeCount > 0 ? "primary" : "inherit"}
+                        variant={filtersActive ? "contained" : "outlined"}
+                        color={filtersActive ? "primary" : "inherit"}
                         startIcon={<FilterAltRoundedIcon />}
                         onClick={onToggleFilters}
                         aria-expanded={filtersOpen}
@@ -118,17 +111,23 @@ export function TaskToolbar({
                         {activeCount > 0 ? ` (${activeCount})` : ""}
                     </Button>
 
-                    <Button variant="contained" startIcon={<AddRoundedIcon />} onClick={onNewTask}>
-                        New task
-                    </Button>
+                    <Tooltip title="New task (N)">
+                        <Button
+                            variant="contained"
+                            startIcon={<AddRoundedIcon />}
+                            onClick={onNewTask}
+                        >
+                            New task
+                        </Button>
+                    </Tooltip>
                 </Stack>
             </Stack>
 
             <Collapse in={filtersOpen} unmountOnExit>
-                <Box id="task-filter-panel" sx={{ mt: 2 }}>
+                <Box id="task-filter-panel" sx={{ mt: 1.5 }}>
                     <FilterPanel filters={filters} onChange={onChange} />
                 </Box>
             </Collapse>
-        </Card>
+        </Box>
     );
 }

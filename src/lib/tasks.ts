@@ -1,22 +1,6 @@
-import {
-    DEFAULT_PROJECT,
-    PRIORITY_META,
-    type Task,
-    type TaskDraft,
-    type TaskStatus,
-} from "../types/task";
+import { DEFAULT_PROJECT, PRIORITY_META, type Task, type TaskDraft } from "../types/task";
 import type { SortOption, TaskFilters } from "../types/filters";
 import { daysUntil } from "./date";
-
-const STATUS_CYCLE: Record<TaskStatus, TaskStatus> = {
-    todo: "doing",
-    doing: "done",
-    done: "todo",
-};
-
-export function nextStatus(status: TaskStatus): TaskStatus {
-    return STATUS_CYCLE[status];
-}
 
 /** A task is overdue only while it is still open, so finished work never nags the user. */
 export function isOverdue(task: Task, now: Date = new Date()): boolean {
@@ -87,6 +71,74 @@ const COMPARATORS: Record<SortOption, (a: Task, b: Task) => number> = {
 
 export function sortTasks(tasks: Task[], sort: SortOption): Task[] {
     return [...tasks].sort(COMPARATORS[sort]);
+}
+
+export const DUE_GROUPS = [
+    "overdue",
+    "today",
+    "tomorrow",
+    "week",
+    "later",
+    "someday",
+    "completed",
+] as const;
+export type DueGroupId = (typeof DUE_GROUPS)[number];
+
+const GROUP_LABELS: Record<DueGroupId, string> = {
+    overdue: "Overdue",
+    today: "Today",
+    tomorrow: "Tomorrow",
+    week: "This week",
+    later: "Later",
+    someday: "No date",
+    completed: "Completed",
+};
+
+export interface DueGroup {
+    id: DueGroupId;
+    label: string;
+    tasks: Task[];
+}
+
+/** Bucket a single task for the grouped list. Finished work is never treated as urgent. */
+export function dueGroupFor(task: Task, now: Date = new Date()): DueGroupId {
+    if (task.status === "done") return "completed";
+    if (!task.dueDate) return "someday";
+
+    const days = daysUntil(task.dueDate, now);
+    if (Number.isNaN(days)) return "someday";
+    if (days < 0) return "overdue";
+    if (days === 0) return "today";
+    if (days === 1) return "tomorrow";
+    return days <= 7 ? "week" : "later";
+}
+
+/**
+ * Splits an already-sorted list into due-date sections, preserving input order within
+ * each section. Empty sections are dropped so the UI never renders a bare header.
+ */
+export function groupTasksByDue(tasks: Task[], now: Date = new Date()): DueGroup[] {
+    const buckets = new Map<DueGroupId, Task[]>();
+    for (const task of tasks) {
+        const id = dueGroupFor(task, now);
+        const bucket = buckets.get(id);
+        if (bucket) bucket.push(task);
+        else buckets.set(id, [task]);
+    }
+
+    return DUE_GROUPS.filter((id) => (buckets.get(id)?.length ?? 0) > 0).map((id) => ({
+        id,
+        label: GROUP_LABELS[id],
+        tasks: buckets.get(id) ?? [],
+    }));
+}
+
+/**
+ * Grouping by due date is itself an ordering, so it only applies to the due-date sorts.
+ * Any other sort falls back to a single flat list rather than pretending to be grouped.
+ */
+export function groupsByDue(sort: SortOption): boolean {
+    return sort === "due-asc";
 }
 
 export interface TaskStats {

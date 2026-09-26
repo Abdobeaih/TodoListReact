@@ -146,7 +146,7 @@ export function clearStoredTasks(): void {
 
 /**
  * Reads persisted tasks, upgrading legacy data on the way. Returns null when the user
- * has never saved anything, which is the signal to seed first-run sample data.
+ * has never saved anything, which lets the caller treat a first run as a clean slate.
  */
 export function loadTasks(): Task[] | null {
     const fallbackTimestamp = new Date().toISOString();
@@ -173,67 +173,4 @@ export function loadTasks(): Task[] | null {
     }
 
     return null;
-}
-
-const SAMPLE_TASKS: Omit<Task, "id" | "createdAt" | "updatedAt" | "completedAt">[] = [
-    {
-        title: "Plan the Q3 roadmap",
-        notes: "Draft themes with the team, then share for async review.",
-        status: "doing",
-        priority: "high",
-        dueDate: null,
-        project: "Planning",
-        tags: ["planning"],
-    },
-    {
-        title: "Fix the onboarding crash on Android 14",
-        notes: "Stack trace points at the notification permission prompt.",
-        status: "todo",
-        priority: "urgent",
-        dueDate: null,
-        project: "Engineering",
-        tags: ["bug", "mobile"],
-    },
-    {
-        title: "Write weekly design review notes",
-        notes: "Focus on the rejected card variant and why.",
-        status: "todo",
-        priority: "medium",
-        dueDate: null,
-        project: "Planning",
-        tags: ["writing"],
-    },
-    {
-        title: "Book the team offsite venue",
-        notes: "Needs headcount confirmation before quoting.",
-        status: "todo",
-        priority: "low",
-        dueDate: null,
-        project: DEFAULT_PROJECT,
-        tags: ["admin"],
-    },
-    {
-        title: "Migrate the API to the new auth gateway",
-        notes: "Token refresh was the last blocker.",
-        status: "done",
-        priority: "high",
-        dueDate: null,
-        project: "Engineering",
-        tags: ["backend"],
-    },
-];
-
-/** First-run content so the app never opens on an empty, unexplained screen. */
-export function createSampleTasks(now: Date = new Date()): Task[] {
-    const base = now.getTime();
-    return SAMPLE_TASKS.map((sample, index) => {
-        const createdAt = new Date(base - (SAMPLE_TASKS.length - index) * 3_600_000).toISOString();
-        return {
-            ...sample,
-            id: createId(),
-            createdAt,
-            updatedAt: createdAt,
-            completedAt: sample.status === "done" ? createdAt : null,
-        };
-    });
 }

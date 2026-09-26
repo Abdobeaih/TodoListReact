@@ -26,7 +26,7 @@ describe("TaskDashboard", () => {
 
         expect(await screen.findByText("Write the report")).toBeInTheDocument();
         expect(screen.getByText("Book flights")).toBeInTheDocument();
-        expect(screen.getByText("Showing 2 of 2 tasks")).toBeInTheDocument();
+        expect(screen.getByText("2 tasks")).toBeInTheDocument();
     });
 
     it("creates a task through the dialog and persists it", async () => {
@@ -159,30 +159,24 @@ describe("TaskDashboard", () => {
         expect(within(dialog).getByLabelText(/Notes/)).toHaveValue("Second notes");
     });
 
-    it("cycles a task through todo, in progress and done", async () => {
+    it("completes and reopens a task from the leading circle", async () => {
         const user = setupUser();
         seedTasks([makeTask({ id: "a", title: "Write the report", status: "todo" })]);
         renderDashboard();
 
         await user.click(
-            screen.getByRole("button", { name: 'Mark "Write the report" as In progress' }),
+            screen.getByRole("checkbox", { name: 'Mark "Write the report" as completed' }),
         );
         await waitFor(() => {
-            expect(
-                screen.getByRole("button", { name: 'Mark "Write the report" as Completed' }),
-            ).toBeInTheDocument();
+            expect(readStoredTasks()?.[0].status).toBe("done");
         });
 
         await user.click(
-            screen.getByRole("button", { name: 'Mark "Write the report" as Completed' }),
+            screen.getByRole("checkbox", { name: 'Mark "Write the report" as not completed' }),
         );
         await waitFor(() => {
-            expect(
-                screen.getByRole("button", { name: 'Mark "Write the report" as To do' }),
-            ).toBeInTheDocument();
+            expect(readStoredTasks()?.[0].status).toBe("todo");
         });
-
-        expect(readStoredTasks()?.[0].status).toBe("done");
     });
 
     it("records when a task was completed and clears the stamp when reopened", async () => {
@@ -191,17 +185,16 @@ describe("TaskDashboard", () => {
         renderDashboard();
 
         await user.click(
-            screen.getByRole("button", { name: 'Mark "Write the report" as In progress' }),
-        );
-        await user.click(
-            screen.getByRole("button", { name: 'Mark "Write the report" as Completed' }),
+            screen.getByRole("checkbox", { name: 'Mark "Write the report" as completed' }),
         );
 
         await waitFor(() => {
             expect(readStoredTasks()?.[0].completedAt).toBeTruthy();
         });
 
-        await user.click(screen.getByRole("button", { name: 'Mark "Write the report" as To do' }));
+        await user.click(
+            screen.getByRole("checkbox", { name: 'Mark "Write the report" as not completed' }),
+        );
         await waitFor(() => {
             expect(readStoredTasks()?.[0].completedAt).toBeNull();
         });
@@ -215,9 +208,9 @@ describe("TaskDashboard", () => {
         ]);
         renderDashboard();
 
-        await user.type(screen.getByPlaceholderText(/Search title/), "flights");
+        await user.type(screen.getByPlaceholderText(/Search tasks/), "flights");
 
-        expect(await screen.findByText("Showing 1 of 2 tasks")).toBeInTheDocument();
+        expect(await screen.findByText("1 of 2 tasks")).toBeInTheDocument();
         expect(screen.getByText("Book flights")).toBeInTheDocument();
         expect(screen.queryByText("Write the report")).not.toBeInTheDocument();
     });
@@ -227,7 +220,7 @@ describe("TaskDashboard", () => {
         seedTasks([makeTask({ id: "a", title: "Write the report" })]);
         renderDashboard();
 
-        await user.type(screen.getByPlaceholderText(/Search title/), "nothing matches this");
+        await user.type(screen.getByPlaceholderText(/Search tasks/), "nothing matches this");
 
         expect(await screen.findByText("No tasks match your filters")).toBeInTheDocument();
         await user.click(screen.getByRole("button", { name: "Clear filters" }));
@@ -245,12 +238,12 @@ describe("TaskDashboard", () => {
         await user.click(screen.getByRole("button", { name: /^Filters/ }));
         await user.click(filterPanel().getByRole("button", { name: "In progress" }));
 
-        expect(await screen.findByText("Showing 1 of 2 tasks")).toBeInTheDocument();
+        expect(await screen.findByText("1 of 2 tasks")).toBeInTheDocument();
         expect(screen.getByText("Write the report")).toBeInTheDocument();
         expect(screen.queryByText("Book flights")).not.toBeInTheDocument();
     });
 
-    it("filters overdue work from the stats tiles", async () => {
+    it("filters overdue work from the progress summary", async () => {
         const user = setupUser();
         seedTasks([
             makeTask({ id: "a", title: "Late task", dueDate: isoYesterday() }),
@@ -258,9 +251,9 @@ describe("TaskDashboard", () => {
         ]);
         renderDashboard();
 
-        await user.click(screen.getByRole("button", { name: /Overdue/ }));
+        await user.click(screen.getByRole("button", { name: /1 overdue/ }));
 
-        expect(await screen.findByText("Showing 1 of 2 tasks")).toBeInTheDocument();
+        expect(await screen.findByText("1 of 2 tasks")).toBeInTheDocument();
         expect(screen.getByText("Late task")).toBeInTheDocument();
         expect(screen.queryByText("Future task")).not.toBeInTheDocument();
     });
@@ -339,7 +332,7 @@ describe("TaskDashboard", () => {
 
         await user.click(screen.getByRole("button", { name: "Reporting" }));
 
-        expect(await screen.findByText("Showing 1 of 2 tasks")).toBeInTheDocument();
+        expect(await screen.findByText("1 of 2 tasks")).toBeInTheDocument();
         expect(screen.queryByText("Flights")).not.toBeInTheDocument();
     });
 
@@ -370,7 +363,7 @@ describe("TaskDashboard", () => {
         });
 
         await user.keyboard("/");
-        expect(screen.getByPlaceholderText(/Search title/)).toHaveFocus();
+        expect(screen.getByPlaceholderText(/Search tasks/)).toHaveFocus();
     });
 
     it("invites the user to create a task when the list is empty", async () => {
@@ -378,6 +371,6 @@ describe("TaskDashboard", () => {
         renderDashboard();
 
         expect(await screen.findByText("No tasks yet")).toBeInTheDocument();
-        expect(screen.getByRole("button", { name: "Create a task" })).toBeInTheDocument();
+        expect(screen.getByRole("button", { name: "Add your first task" })).toBeInTheDocument();
     });
 });

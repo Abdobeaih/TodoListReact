@@ -1,12 +1,12 @@
 import { useCallback, useEffect, useMemo, useReducer, useState, type ReactNode } from "react";
 import type { Task, TaskDraft } from "../types/task";
 import { createId } from "../lib/id";
-import { createSampleTasks, loadTasks, saveTasks } from "../lib/storage";
+import { loadTasks, saveTasks } from "../lib/storage";
 import { taskReducer } from "./taskReducer";
 import { TaskStoreContext, type PendingUndo } from "./taskStoreContext";
 
 function initTasks(): Task[] {
-    return loadTasks() ?? createSampleTasks();
+    return loadTasks() ?? [];
 }
 
 export function TaskProvider({ children }: { children: ReactNode }) {
